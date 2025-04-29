@@ -1,0 +1,44 @@
+version: '3.8'
+
+networks:
+  spendsense-net:
+    driver: bridge
+
+services:
+
+  mysql-expenses:
+    image: mysql:latest
+    container_name: mysql-expense-1
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: expense_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    networks:
+      - spendsense-net
+    ports:
+      - "3306:3306"
+
+
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entryPoints.web.address=:80"
+      - "--entryPoints.websecure.address=:443"
+      - "--log.level=DEBUG"
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik Dashboard
+      - "443:443"    # HTTPS (optional)
+
+  expense-service:
+    build: ./expense-service/openjdk
+    container_name: expense-service-1
+    ports:
+      - "9090:8080"
+    networks:
+      - spendsense-net
