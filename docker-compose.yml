@@ -42,3 +42,7 @@ services:
       - "9090:9090"
     networks:
       - spendsense-net
+    depends_on:
+      - mysql-expenses
+
+    restart: on-failure
