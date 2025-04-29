@@ -39,6 +39,6 @@ services:
     build: ./expense-service/openjdk
     container_name: expense-service-1
     ports:
-      - "9090:8080"
+      - "9090:9090"
     networks:
       - spendsense-net
