@@ -1,14 +1,35 @@
 version: '3.8'
 
+
 networks:
   spendsense-net:
     driver: bridge
 
+
 services:
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    container_name: oauth2-proxy
+    ports:
+      - "4180:4180"
+    networks:
+       - spendsense-net
+    environment:
+      OAUTH2_PROXY_PROVIDER: keycloak
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak:8080/realms/spendsense
+      OAUTH2_PROXY_COOKIE_SECRET: "P0vDq32mpPl5AVv0YQ4hlmv2EO5ylAMOehDN0I7eF7Q="
+      OAUTH2_PROXY_CLIENT_ID: "spendsense-client"
+      OAUTH2_PROXY_CLIENT_SECRET: "rHY2zaYVS94C3TFCUEa5VEsryd90J7xQ"
+      OAUTH2_PROXY_EMAIL_DOMAINS: "*"
+      OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
+      OAUTH2_PROXY_COOKIE_SECURE: "false" 
+      OAUTH2_PROXY_REDIRECT_URL: http://expense.vicky.net/oauth2/callback
+      OAUTH2_PROXY_UPSTREAMS: "static://202"    
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "false"
 
   mysql-expenses:
     image: mysql:latest
-    container_name: mysql-expense-1
+    container_name: mysql-expense
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
       MYSQL_DATABASE: expense_db
@@ -16,9 +37,21 @@ services:
       MYSQL_PASSWORD: password
     networks:
       - spendsense-net
+
+  mysql-keycloak:
+    image: mysql:8
+    container_name: mysql-keycloak
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+    volumes:
+      - mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
-
+    networks:
+      - spendsense-net
 
   traefik:
     image: traefik:v2.10
@@ -30,19 +63,57 @@ services:
       - "--entryPoints.web.address=:80"
       - "--entryPoints.websecure.address=:443"
       - "--log.level=DEBUG"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - spendsense-net  
     ports:
       - "80:80"
       - "8080:8080"  # Traefik Dashboard
       - "443:443"    # HTTPS (optional)
+    labels: 
+      - traefik.http.middlewares.oauth2-proxy-forwardauth.forwardauth.address=http://oauth2-proxy:4180/oauth2/auth
 
   expense-service:
     build: ./expense-service/openjdk
-    container_name: expense-service-1
+    container_name: expense-service
     ports:
       - "9090:9090"
     networks:
       - spendsense-net
     depends_on:
       - mysql-expenses
-
     restart: on-failure
+    labels: 
+      - traefik.enable=true
+      - traefik.http.routers.expense-service.entrypoints=web
+      - traefik.http.routers.expense-service.rule=Host(`expense.vicky.net`)
+      - traefik.http.services.expense-service.loadbalancer.server.port=9090
+
+      - traefik.http.routers.expense-service.middlewares=oauth2-proxy-forwardauth
+
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KC_DB: mysql
+      KC_DB_URL_HOST: mysql-keycloak
+      KC_DB_URL_PORT: 3306
+      KC_DB_SCHEMA: keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8090:8080"
+    depends_on:
+      - mysql-keycloak
+    networks:
+      - spendsense-net
+
+
+volumes:
+  mysql_data:
+
+    
