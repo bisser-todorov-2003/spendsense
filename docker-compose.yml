@@ -16,8 +16,8 @@ services:
        - spendsense-net
     environment:
       OAUTH2_PROXY_PROVIDER: keycloak
-      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak:8080/realms/spendsense
-      OAUTH2_PROXY_COOKIE_SECRET: "P0vDq32mpPl5AVv0YQ4hlmv2EO5ylAMOehDN0I7eF7Q="
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak:8090/realms/spendsense
+      OAUTH2_PROXY_COOKIE_SECRET: "i6OQu7IbTqFNdNdqQQivBLJO74a5GEXM"
       OAUTH2_PROXY_CLIENT_ID: "spendsense-client"
       OAUTH2_PROXY_CLIENT_SECRET: "rHY2zaYVS94C3TFCUEa5VEsryd90J7xQ"
       OAUTH2_PROXY_EMAIL_DOMAINS: "*"
