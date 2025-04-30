@@ -27,6 +27,14 @@ services:
       OAUTH2_PROXY_UPSTREAMS: "static://202"    
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "false"
 
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.oauth2-proxy.rule=Host(`expense.vicky.net`) && PathPrefix(`/oauth2/`)
+      - traefik.http.routers.oauth2-proxy.entrypoints=web
+      - traefik.http.routers.oauth2-proxy.service=oauth2-proxy-service
+      - traefik.http.services.oauth2-proxy-service.loadbalancer.server.port=4180
+
+      
   mysql-expenses:
     image: mysql:latest
     container_name: mysql-expense
@@ -91,6 +99,12 @@ services:
       - traefik.http.services.expense-service.loadbalancer.server.port=9090
 
       - traefik.http.routers.expense-service.middlewares=oauth2-proxy-forwardauth
+
+      - traefik.http.middlewares.oauth2-proxy-forwardauth.forwardauth.address=http://oauth2-proxy:4180/oauth2/auth
+      - traefik.http.middlewares.auth-redirect.errors.status=401
+      - traefik.http.middlewares.auth-redirect.errors.service=noop@internal
+      - traefik.http.middlewares.auth-redirect.errors.query=/oauth2/start
+      - traefik.http.routers.expense-service.middlewares=oauth2-proxy-forwardauth,auth-redirect
 
 
   keycloak:
